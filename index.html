@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Speed Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .card {
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            width: 300px;
+            background-color: #f9f9f9;
+            box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
+        }
+        .vehicle-no {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .speed {
+            font-size: 24px;
+            color: #333;
+        }
+        .delete-btn {
+            margin-top: 10px;
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="vehicleForm">
+        <form id="vehicleNumberForm">
+            <label for="vehicleNumber">Enter Vehicle Number:</label>
+            <input type="text" id="vehicleNumber" name="vehicleNumber" required>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <div class="card" id="locationInfo" style="display: none;">
+        <div class="vehicle-no" id="vehicleNoHeading"></div>
+        <div class="speed" id="speed"></div>
+        <button class="delete-btn" id="deleteBtn" style="display: none;">Delete Vehicle No</button>
+    </div>
+
+    <script>
+        let speedExceededTimeout = null;
+
+        function updateLocation(pos) {
+            console.log("update call");
+            const { speed } = pos.coords;
+            // Convert speed from m/s to km/hr
+            const speedKmHr = (speed * 3.6).toFixed(2); // 1 m/s = 3.6 km/hr
+            document.getElementById('speed').innerHTML = `${speedKmHr} km/hr`;
+
+            if (parseFloat(speedKmHr) > 30) {
+                if (!speedExceededTimeout) {
+                    // Start timeout if not already started
+                    speedExceededTimeout = setTimeout(() => {
+                        alert("Speed has exceeded 30 km/hr continuously for 30 seconds!");
+                        // Reset timeout after displaying the alert
+                        speedExceededTimeout = null;
+                    }, 30000); // 30 seconds
+                }
+            } else {
+                // Reset timeout if speed is below 30 km/hr
+                clearTimeout(speedExceededTimeout);
+                speedExceededTimeout = null;
+            }
+        }
+
+        function error(err) {
+            console.warn(`ERROR(${err.code}): ${err.message}`);
+        }
+
+        const vehicleNumberForm = document.getElementById('vehicleNumberForm');
+        const locationInfo = document.getElementById('locationInfo');
+        const vehicleNoHeading = document.getElementById('vehicleNoHeading');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const vehicleForm = document.getElementById('vehicleForm');
+
+        const storedVehicleNo = localStorage.getItem('vehicleNumber');
+        if (storedVehicleNo) {
+            vehicleNoHeading.innerHTML = `Vehicle No: ${storedVehicleNo}`;
+            vehicleNumberForm.style.display = 'none';
+            vehicleForm.style.display = 'none';
+            locationInfo.style.display = 'block';
+            deleteBtn.style.display = 'block';
+            // Start geolocation tracking if a vehicle number is already stored
+            navigator.geolocation.watchPosition(updateLocation, error, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+        }
+
+        vehicleNumberForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const vehicleNumber = document.getElementById('vehicleNumber').value;
+            if (vehicleNumber.trim() !== '') {
+                localStorage.setItem('vehicleNumber', vehicleNumber);
+                vehicleNoHeading.innerHTML = `Vehicle No: ${vehicleNumber}`;
+                navigator.geolocation.watchPosition(updateLocation, error, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+                locationInfo.style.display = 'block';
+                vehicleNumberForm.style.display = 'none';
+                vehicleForm.style.display = 'none';
+                deleteBtn.style.display = 'block';
+            } else {
+                alert('Please enter a valid vehicle number.');
+            }
+        });
+
+        deleteBtn.addEventListener('click', function() {
+            const confirmDelete = confirm('Are you sure you want to delete this vehicle number?');
+            if (confirmDelete) {
+                localStorage.removeItem('vehicleNumber');
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
